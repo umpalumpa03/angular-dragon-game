@@ -1,0 +1,16 @@
+<div class="game-status">
+    <div class="status-item">
+        <span>Game:</span>
+        <span [class.running]="gameState.isRunning()" [class.stopped]="!gameState.isRunning()">
+            {{ gameState.gameStatus() }}
+        </span>
+    </div>
+    <div class="status-item">
+        <span>Dragon:</span>
+        <span class="dragon-state">{{ gameState.dragonState() }}</span>
+    </div>
+    <div class="status-item">
+        <span>Speed:</span>
+        <span>{{ gameState.speed().toFixed(2) }}x</span>
+    </div>
+</div>

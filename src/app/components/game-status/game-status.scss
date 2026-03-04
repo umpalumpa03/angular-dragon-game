@@ -1,0 +1,12 @@
+.game-status {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.status-item {
+    display: flex;
+    gap: 0.5rem;
+}

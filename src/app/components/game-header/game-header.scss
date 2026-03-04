@@ -1,0 +1,22 @@
+.game-header {
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: normal;
+}
+
+.game-stats {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 8px;
+    font-size: 14px;
+}
+
+.stat-label {
+    margin-right: 4px;
+}

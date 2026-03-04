@@ -1,0 +1,33 @@
+.game-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.timer-control input {
+    width: 80px;
+    font-size: 14px;
+    padding: 4px 8px;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.btn {
+    font-size: 14px;
+    padding: 4px 8px;
+    border: 1px solid #777;
+    background: #fff;
+    cursor: pointer;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
