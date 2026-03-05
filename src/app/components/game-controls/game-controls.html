@@ -1,29 +1,33 @@
 <div class="game-controls">
-    <div class="timer-control">
-        <label for="timer">Set Timer (seconds):</label>
-        <input type="number" id="timer" min="10" max="300" [ngModel]="gameState.timerInputValue()"
-            (ngModelChange)="onTimerChange($event)" placeholder="60" />
-    </div>
+  <div class="timer-control">
+    <label for="timer">Timer (seconds):</label>
+    <input
+      type="number"
+      id="timer"
+      [min]="minTimer"
+      [max]="maxTimer"
+      [ngModel]="gameState.timerInputValue()"
+      (ngModelChange)="onTimerChange($event)"
+      [placeholder]="defaultTimer"
+      [disabled]="gameState.isRunning()"
+    />
+  </div>
 
-    <div class="action-buttons">
-        <button class="btn btn-start" (click)="onStartGame()" [disabled]="gameState.isRunning()">
-            {{ gameState.isRunning() ? 'Game Running' : 'Start Game' }}
-        </button>
+  <div class="action-buttons">
+    <button class="btn btn-start" (click)="onStartGame()" [disabled]="gameState.isRunning()">
+      {{ gameState.isRunning() ? 'Game Running' : 'Start Game' }}
+    </button>
 
-        <button class="btn" (click)="onJump()" [disabled]="!gameState.canJump()">
-            Jump
-        </button>
+    <button class="btn btn-jump" (click)="onJump()" [disabled]="!gameState.canJump()">Jump</button>
 
-        <button class="btn btn-pause" (click)="onTogglePause()" [disabled]="!gameState.canPause()">
-            {{ gameState.isPaused() ? 'Resume' : 'Pause' }}
-        </button>
+    <button class="btn btn-pause" (click)="onTogglePause()" [disabled]="!gameState.canPause()">
+      {{ gameState.isPaused() ? 'Resume' : 'Pause' }}
+    </button>
 
-        <button class="btn btn-end" (click)="onEndGame()" [disabled]="!gameState.canEndGame()">
-            End Game
-        </button>
+    <button class="btn btn-end" (click)="onEndGame()" [disabled]="!gameState.canEndGame()">
+      End Game
+    </button>
 
-        <button class="btn btn-reset" (click)="onRestart()">
-            Restart
-        </button>
-    </div>
+    <button class="btn btn-reset" (click)="onRestart()">Restart</button>
+  </div>
 </div>

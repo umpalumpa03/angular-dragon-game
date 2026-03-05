@@ -1,17 +1,18 @@
 <header class="game-header">
-    <h1>Dragon Runner</h1>
-    <div class="game-stats">
-        <div class="stat">
-            <span class="stat-label">Score:</span>
-            <span class="stat-value">{{ gameState.score() }}</span>
-        </div>
-        <div class="stat">
-            <span class="stat-label">High Score:</span>
-            <span class="stat-value">{{ gameState.highScore() }}</span>
-        </div>
-        <div class="stat">
-            <span class="stat-label">Time:</span>
-            <span class="stat-value">{{ gameState.timeRemaining() | number: '1.0-0' }}s</span>
-        </div>
+  <h1>Dragon Runner</h1>
+
+  <div class="game-stats">
+    <div class="stat">
+      <span class="stat-label">Score</span>
+      <span class="stat-value">{{ gameState.score() }}</span>
     </div>
+    <div class="stat">
+      <span class="stat-label">High Score</span>
+      <span class="stat-value">{{ gameState.highScore() }}</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Time</span>
+      <span class="stat-value">{{ gameState.timeRemaining() | number: '1.0-0' }}s</span>
+    </div>
+  </div>
 </header>

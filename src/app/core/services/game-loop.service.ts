@@ -1,59 +1,65 @@
-import { Injectable, OnDestroy } from '@angular/core';
+import { Injectable, inject, OnDestroy } from '@angular/core';
 import { GameStateService } from './game-state.service';
+import {
+  GAME_LOOP_INTERVAL_MS,
+  SPAWN_MIN_DELAY_MS,
+  SPAWN_RANDOM_DELAY_MS,
+} from '../models/game-config';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class GameLoopService implements OnDestroy {
-  private gameLoopInterval: any = null;
-  private spawnInterval: any = null;
+  private readonly gameState = inject(GameStateService);
 
-  constructor(private gameState: GameStateService) {}
+  private gameLoopInterval: ReturnType<typeof setInterval> | null = null;
+  private spawnTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  startGameLoop(): void {
-    this.cleanupIntervals();
+  public startGameLoop(): void {
+    this.stopGameLoop();
 
     this.gameLoopInterval = setInterval(() => {
-      if (this.gameState.isRunning() && !this.gameState.isPaused()) {
-        this.updateGameState();
+      if (this.gameState.isActive()) {
+        this.tick();
       }
-    }, 16);
+    }, GAME_LOOP_INTERVAL_MS);
 
-    this.startSpawning();
+    this.scheduleNextSpawn();
   }
 
-  private startSpawning(): void {
-    const spawnObstacle = () => {
-      if (this.gameState.isRunning() && !this.gameState.isPaused()) {
-        this.gameState.spawnObstacle();
-      }
+  public stopGameLoop(): void {
+    if (this.gameLoopInterval !== null) {
+      clearInterval(this.gameLoopInterval);
+      this.gameLoopInterval = null;
+    }
 
-      this.spawnInterval = setTimeout(spawnObstacle, 2000 + Math.random() * 1000);
-    };
-
-    spawnObstacle();
+    if (this.spawnTimeout !== null) {
+      clearTimeout(this.spawnTimeout);
+      this.spawnTimeout = null;
+    }
   }
 
-  private updateGameState(): void {
+  public ngOnDestroy(): void {
+    this.stopGameLoop();
+  }
+
+  private tick(): void {
     this.gameState.moveObstacles();
     this.gameState.checkCollisions();
     this.gameState.updateScore();
     this.gameState.updateTimer();
-    this.gameState.updateSpeed();
   }
 
-  stopGameLoop(): void {
-    this.cleanupIntervals();
-  }
+  private scheduleNextSpawn(): void {
+    const delay =
+      SPAWN_MIN_DELAY_MS + Math.random() * SPAWN_RANDOM_DELAY_MS;
 
-  cleanupIntervals(): void {
-    if (this.gameLoopInterval) {
-      clearInterval(this.gameLoopInterval);
-      this.gameLoopInterval = null;
-    }
-  }
+    this.spawnTimeout = setTimeout(() => {
+      if (this.gameState.isActive()) {
+        this.gameState.spawnObstacle();
+      }
 
-  ngOnDestroy(): void {
-    this.cleanupIntervals();
+      if (this.gameState.isRunning()) {
+        this.scheduleNextSpawn();
+      }
+    }, delay);
   }
 }

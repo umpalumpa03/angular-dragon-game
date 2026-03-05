@@ -1,181 +1,255 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, signal, computed, OnDestroy } from '@angular/core';
 import { IObstacle } from '../models/obstacles.model';
-
-export const GROUND_LEVEL = 50;
-export const DRAGON_X = 30;
+import {
+  BONUS_POINTS_PER_JUMP,
+  DEFAULT_TIMER_SECONDS,
+  DRAGON_HEIGHT,
+  DRAGON_HITBOX_LEFT_OFFSET,
+  DRAGON_HITBOX_RIGHT_OFFSET,
+  DRAGON_X,
+  GROUND_LEVEL,
+  HIGH_SCORE_STORAGE_KEY,
+  JUMP_DURATION_MS,
+  JUMP_HEIGHT,
+  OBSTACLE_DEFAULT_HEIGHT,
+  OBSTACLE_DEFAULT_WIDTH,
+  OBSTACLE_GROUND_LEVEL,
+  OBSTACLE_START_X,
+  SCORE_PER_TICK,
+  SPEED_BASE,
+  SPEED_PER_SECOND,
+  TIMER_TICK_SECONDS,
+} from '../models/game-config';
 
 export type DragonState = 'running' | 'jumping' | 'falling';
 
-@Injectable({
-  providedIn: 'root',
-})
-export class GameStateService {
-  readonly isRunning = signal(false);
-  readonly isPaused = signal(true);
-  readonly isGameOver = signal(false);
+@Injectable({ providedIn: 'root' })
+export class GameStateService implements OnDestroy {
+  public readonly isRunning = signal(false);
+  public readonly isPaused = signal(true);
+  public readonly isGameOver = signal(false);
+  public readonly timeRemaining = signal(0);
+  public readonly timeSurvived = signal(0);
+  public readonly timerInputValue = signal(DEFAULT_TIMER_SECONDS);
+  public readonly score = signal(0);
+  public readonly highScore = signal(this.loadHighScore());
+  public readonly dragonY = signal(GROUND_LEVEL);
+  public readonly dragonState = signal<DragonState>('running');
+  public readonly obstacles = signal<IObstacle[]>([]);
 
-  readonly timeRemaining = signal(0);
-  readonly timeSurvived = signal(0);
-  readonly timerInputValue = signal(60);
+  public readonly isActive = computed(() => this.isRunning() && !this.isPaused());
 
-  readonly score = signal(0);
-  readonly highScore = signal(0);
-  readonly speed = signal(1);
+  public readonly gameStatus = computed(() => {
+    if (!this.isRunning()) return 'STOPPED';
+    return this.isPaused() ? 'PAUSED' : 'RUNNING';
+  });
 
-  readonly dragonY = signal(GROUND_LEVEL);
-  readonly dragonVelocity = signal(0);
-  readonly dragonState = signal<DragonState>('running');
-
-  readonly obstacles = signal<IObstacle[]>([]);
-
-  readonly gameStatus = computed(() => (this.isRunning() ? 'RUNNING' : 'STOPPED'));
-
-  readonly canJump = computed(
-    () => this.isRunning() && !this.isPaused() && this.dragonState() === 'running',
+  public readonly speed = computed(
+    () => SPEED_BASE + this.timeSurvived() * SPEED_PER_SECOND,
   );
 
-  readonly canPause = computed(() => this.isRunning());
+  public readonly canJump = computed(
+    () => this.isActive() && this.dragonState() === 'running',
+  );
 
-  readonly canEndGame = computed(() => this.isRunning());
+  public readonly canPause = computed(() => this.isRunning());
+  public readonly canEndGame = computed(() => this.isRunning());
+  public readonly hasTimeRemaining = computed(() => this.timeRemaining() > 0);
 
-  constructor() {
-    effect(() => {
-      const currentScore = this.score();
-      const currentHigh = this.highScore();
-      if (currentScore > currentHigh) {
-        this.highScore.set(currentScore);
-      }
-    });
+  public readonly isNewHighScore = computed(
+    () => this.isGameOver() && this.score() >= this.highScore(),
+  );
 
-    effect(() => {
-      if (this.timeRemaining() <= 0 && this.isRunning()) {
-        this.endGame();
-      }
-    });
+  private jumpTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  public ngOnDestroy(): void {
+    this.clearJumpTimeout();
   }
 
-  startGame(): void {
+  public startGame(): void {
+    this.clearJumpTimeout();
     this.obstacles.set([]);
     this.isRunning.set(true);
     this.isPaused.set(false);
     this.isGameOver.set(false);
-
     this.timeRemaining.set(this.timerInputValue());
     this.timeSurvived.set(0);
     this.score.set(0);
-    this.speed.set(1);
-
     this.dragonState.set('running');
     this.dragonY.set(GROUND_LEVEL);
-    this.dragonVelocity.set(0);
   }
 
-  resetGameState(): void {
+  public resetGameState(): void {
+    this.clearJumpTimeout();
     this.isRunning.set(false);
     this.isPaused.set(true);
     this.isGameOver.set(false);
     this.timeRemaining.set(0);
     this.timeSurvived.set(0);
-    this.speed.set(1);
     this.score.set(0);
     this.dragonY.set(GROUND_LEVEL);
-    this.dragonVelocity.set(0);
     this.dragonState.set('running');
     this.obstacles.set([]);
   }
 
-  endGame(): void {
-    this.highScore.update((prev) => Math.max(prev, this.score()));
+  public endGame(): void {
+    this.clearJumpTimeout();
     this.isRunning.set(false);
     this.isPaused.set(true);
     this.isGameOver.set(true);
+    this.persistHighScore(this.highScore());
   }
 
-  togglePause(): void {
+  public togglePause(): void {
     this.isPaused.update((v) => !v);
   }
 
-  setTimerValue(value: number): void {
-    this.timerInputValue.set(value);
+  public setTimerValue(seconds: number): void {
+    this.timerInputValue.set(seconds);
   }
 
-  jump(): void {
-    if (this.dragonState() !== 'running') {
-      return;
-    }
+  public jump(): void {
+    if (this.dragonState() !== 'running') return;
 
+    this.clearJumpTimeout();
     this.dragonState.set('jumping');
-    this.dragonY.set(GROUND_LEVEL + 50);
+    this.dragonY.set(GROUND_LEVEL + JUMP_HEIGHT);
 
-    setTimeout(() => {
+    this.jumpTimeoutId = setTimeout(() => {
       if (this.dragonState() === 'jumping') {
         this.dragonY.set(GROUND_LEVEL);
         this.dragonState.set('running');
       }
-    }, 500);
+      this.jumpTimeoutId = null;
+    }, JUMP_DURATION_MS);
   }
 
-  spawnObstacle(): void {
+  public spawnObstacle(): void {
     const newObstacle: IObstacle = {
-      x: 100,
-      width: 10,
-      height: 20,
+      x: OBSTACLE_START_X,
+      width: OBSTACLE_DEFAULT_WIDTH,
+      height: OBSTACLE_DEFAULT_HEIGHT,
+      hasAwardedJumpBonus: false,
     };
-    this.obstacles.update((obstacles) => [...obstacles, newObstacle]);
+    this.obstacles.update((list) => [...list, newObstacle]);
   }
 
-  moveObstacles(): void {
-    this.obstacles.update((obstacles) =>
-      obstacles
-        .map((obstacle) => ({
-          ...obstacle,
-          x: obstacle.x - this.speed(),
-        }))
-        .filter((obstacle) => obstacle.x > -obstacle.width),
-    );
+  public moveObstacles(): void {
+    const currentSpeed = this.speed();
+    const currentDragonState = this.dragonState();
+
+    this.obstacles.update((list) => {
+      const result: IObstacle[] = [];
+
+      for (const obstacle of list) {
+        const newX = obstacle.x - currentSpeed;
+
+        // Award bonus exactly once when dragon jumps OVER the obstacle
+        const justPassedDragon =
+          obstacle.x >= DRAGON_X && newX < DRAGON_X;
+
+        const shouldAwardBonus =
+          !obstacle.hasAwardedJumpBonus &&
+          currentDragonState === 'jumping' &&
+          justPassedDragon;
+
+        if (shouldAwardBonus) {
+          this.addScore(BONUS_POINTS_PER_JUMP);
+        }
+
+        // Keep obstacles that are still on screen
+        if (newX > -obstacle.width) {
+          result.push({
+            ...obstacle,
+            x: newX,
+            hasAwardedJumpBonus: obstacle.hasAwardedJumpBonus || shouldAwardBonus,
+          });
+        }
+      }
+
+      return result;
+    });
   }
 
-  checkCollisions(): boolean {
-    const obstacles = this.obstacles();
+  public checkCollisions(): boolean {
+    // Jumping dragon is always clear of ground-level obstacles
+    if (this.dragonState() === 'jumping') return false;
+
     const dragonBottom = this.dragonY();
-    const dragonHeight = 40;
-    const dragonTop = dragonBottom + dragonHeight;
-    const dragonLeft = DRAGON_X - 41;
-    const dragonRight = DRAGON_X - 21;
+    const dragonTop = dragonBottom + DRAGON_HEIGHT;
+    const dragonLeft = DRAGON_X - DRAGON_HITBOX_LEFT_OFFSET;
+    const dragonRight = DRAGON_X - DRAGON_HITBOX_RIGHT_OFFSET;
 
-    for (const obstacle of obstacles) {
+    for (const obstacle of this.obstacles()) {
       const obstacleLeft = obstacle.x;
       const obstacleRight = obstacle.x + obstacle.width;
-      const obstacleBottom = 40;
+      const obstacleBottom = OBSTACLE_GROUND_LEVEL;
       const obstacleTop = obstacleBottom + obstacle.height;
 
-      const horizontalOverlap = obstacleLeft < dragonRight && obstacleRight > dragonLeft;
-      const verticalOverlap = dragonBottom < obstacleTop && dragonTop > obstacleBottom;
+      const horizontalOverlap =
+        obstacleLeft < dragonRight && obstacleRight > dragonLeft;
+      const verticalOverlap =
+        dragonBottom < obstacleTop && dragonTop > obstacleBottom;
 
       if (horizontalOverlap && verticalOverlap) {
         this.endGame();
         return true;
       }
     }
+
     return false;
   }
 
-  updateScore(): void {
-    if (this.isRunning() && !this.isPaused()) {
-      this.score.update((score) => score + 1);
+  public updateScore(): void {
+    if (this.isActive()) {
+      this.addScore(SCORE_PER_TICK);
     }
   }
 
-  updateTimer(): void {
-    if (this.timeRemaining() > 0) {
-      this.timeRemaining.update((time) => Math.max(0, time - 0.016));
-      this.timeSurvived.update((t) => t + 0.016);
+  public updateTimer(): void {
+    if (!this.hasTimeRemaining()) return;
+
+    this.timeRemaining.update((t) =>
+      Math.max(0, t - TIMER_TICK_SECONDS),
+    );
+    this.timeSurvived.update((t) => t + TIMER_TICK_SECONDS);
+
+    if (this.timeRemaining() <= 0 && this.isRunning()) {
+      this.endGame();
     }
   }
 
-  updateSpeed(): void {
-    const base = 1;
-    const extra = this.timeSurvived() * 0.02;
-    this.speed.set(base + extra);
+  private addScore(points: number): void {
+    this.score.update((current) => {
+      const next = current + points;
+      if (next > this.highScore()) {
+        this.highScore.set(next);
+      }
+      return next;
+    });
+  }
+
+  private loadHighScore(): number {
+    try {
+      const stored = localStorage.getItem(HIGH_SCORE_STORAGE_KEY);
+      if (stored === null) return 0;
+      const parsed = Number(stored);
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  private persistHighScore(value: number): void {
+    try {
+      localStorage.setItem(HIGH_SCORE_STORAGE_KEY, String(value));
+    } catch {}
+  }
+
+  private clearJumpTimeout(): void {
+    if (this.jumpTimeoutId !== null) {
+      clearTimeout(this.jumpTimeoutId);
+      this.jumpTimeoutId = null;
+    }
   }
 }

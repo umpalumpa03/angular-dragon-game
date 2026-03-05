@@ -1,5 +1,4 @@
-import { Component, HostListener, inject, OnDestroy, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, HostListener, inject, OnDestroy } from '@angular/core';
 import { GameArea } from './components/game-area/game-area';
 import { GameControls } from './components/game-controls/game-controls';
 import { GameHeader } from './components/game-header/game-header';
@@ -10,8 +9,8 @@ import { GameLoopService } from './core/services/game-loop.service';
 
 @Component({
   selector: 'app-root',
-  imports: [GameArea, GameControls, GameHeader, GameStatus, GameInstructions],
   standalone: true,
+  imports: [GameArea, GameControls, GameHeader, GameStatus, GameInstructions],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
@@ -20,31 +19,38 @@ export class App implements OnDestroy {
   private readonly gameLoop = inject(GameLoopService);
 
   @HostListener('window:keydown', ['$event'])
-  handleKeydown(event: KeyboardEvent): void {
-    if (event.code === 'Space' || event.code === 'ArrowUp') {
-      event.preventDefault();
-      if (!this.gameState.isRunning()) {
+  public handleKeydown(event: KeyboardEvent): void {
+    switch (event.code) {
+      case 'Space':
+      case 'ArrowUp':
+        event.preventDefault();
+        if (!this.gameState.isRunning()) {
+          this.startGame();
+        } else if (this.gameState.canJump()) {
+          this.gameState.jump();
+        }
+        break;
+
+      case 'KeyP':
+        event.preventDefault();
+        if (this.gameState.canPause()) {
+          this.gameState.togglePause();
+        }
+        break;
+
+      case 'KeyR':
+        event.preventDefault();
         this.startGame();
-      } else if (!this.gameState.isPaused()) {
-        this.gameState.jump();
-      }
-    } else if (event.code === 'KeyP') {
-      event.preventDefault();
-      if (this.gameState.isRunning()) {
-        this.gameState.togglePause();
-      }
-    } else if (event.code === 'KeyR') {
-      event.preventDefault();
-      this.startGame();
+        break;
     }
+  }
+
+  public ngOnDestroy(): void {
+    this.gameLoop.stopGameLoop();
   }
 
   private startGame(): void {
     this.gameState.startGame();
     this.gameLoop.startGameLoop();
-  }
-
-  ngOnDestroy(): void {
-    this.gameLoop.stopGameLoop();
   }
 }

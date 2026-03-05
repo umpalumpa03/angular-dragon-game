@@ -1,13 +1,13 @@
 import { Component, inject } from '@angular/core';
 import { GameStateService } from '../../core/services/game-state.service';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-game-status',
-  standalone: true,
-  imports: [],
+  imports: [CommonModule],
   templateUrl: './game-status.html',
   styleUrl: './game-status.scss',
 })
 export class GameStatus {
-  readonly gameState = inject(GameStateService);
+  public readonly gameState = inject(GameStateService);
 }

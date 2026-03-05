@@ -1,27 +1,46 @@
 <div class="game-area">
-    <div class="ground"></div>
+  <div class="ground"></div>
 
-    <img class="dino dino-img" [class.jumping]="gameState.dragonState() === 'jumping'"
-        [class.running]="gameState.dragonState() === 'running'" [style.bottom.px]="gameState.dragonY() - 8"
-        [style.left.px]="DRAGON_X" src="./icons/dino.png" alt="Dragon" />
+  <img
+    class="dino dino-img"
+    [class.jumping]="gameState.dragonState() === 'jumping'"
+    [class.running]="gameState.dragonState() === 'running'"
+    [style.bottom.px]="gameState.dragonY() - 8"
+    [style.left.px]="DRAGON_X"
+    src="./icons/dino.png"
+    alt="Dragon"
+  />
 
-    @for (obstacle of gameState.obstacles(); track $index) {
-    <div class="obstacle" [style.left.%]="obstacle.x" [style.width.px]="obstacle.width"
-        [style.height.px]="obstacle.height">
-    </div>
-    }
+  @for (obstacle of gameState.obstacles(); track $index) {
+    <div
+      class="obstacle"
+      [style.left.%]="obstacle.x"
+      [style.width.px]="obstacle.width"
+      [style.height.px]="obstacle.height"
+    ></div>
+  }
 
-    @if (gameState.isGameOver()) {
+  @if (gameState.isGameOver()) {
     <div class="game-over-overlay">
-        <div class="game-over-box">
-            <h2>Game Over</h2>
-            <p>Score: {{ gameState.score() }}</p>
-            <p>
-                Time Survived:
-                {{ gameState.timeSurvived() | number : '1.0-1' }} s
-            </p>
-            <button (click)="onRestart()">Restart</button>
-        </div>
+      <div class="game-over-box">
+        <h2>Game Over</h2>
+
+        @if (gameState.isNewHighScore()) {
+          <p class="new-high-score">New High Score!</p>
+        }
+
+        <p>
+          Score: <strong>{{ gameState.score() }}</strong>
+        </p>
+        <p>
+          High Score: <strong>{{ gameState.highScore() }}</strong>
+        </p>
+        <p>
+          Time Survived: <strong>{{ gameState.timeSurvived() | number: '1.0-1' }}s</strong>
+        </p>
+
+        <button class="btn btn-restart" (click)="onRestart()">Play Again</button>
+      </div>
     </div>
-    }
+  }
 </div>

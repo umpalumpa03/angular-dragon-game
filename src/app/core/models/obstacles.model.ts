@@ -1,5 +1,6 @@
 export interface IObstacle {
-  x: number;
-  width: number;
-  height: number;
+  readonly x: number;
+  readonly width: number;
+  readonly height: number;
+  readonly hasAwardedJumpBonus: boolean;
 }
